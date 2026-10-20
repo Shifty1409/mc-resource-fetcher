@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": ".harness",
+    "rootDir": "src",
+    "sourceMap": false,
+    "declaration": false
+  },
+  "include": [
+    "src/main/harness.ts",
+    "src/main/server.ts",
+    "src/main/java-check.ts",
+    "src/main/core/**/*.ts",
+    "src/shared/**/*.ts"
+  ],
+  "exclude": ["src/main/index.ts", "src/main/ipc.ts"]
+}

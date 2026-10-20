@@ -1,0 +1,53 @@
+appId: com.dsh.mclauncher
+productName: MC-Launcher
+copyright: 个人使用
+
+directories:
+  output: dist
+  buildResources: build
+
+# 直接复用已下载好的 electron，避免打包时再从 GitHub 拉 100MB
+electronDist: node_modules/electron/dist
+electronVersion: 44.0.0
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/*.ts'
+  - '!**/*.log'
+
+# 应用窗口模式需要：编译好的服务端 + 静态界面 + adm-zip，且必须在 asar 之外
+extraResources:
+  - from: .harness
+    to: server
+  - from: node_modules/adm-zip
+    to: server/node_modules/adm-zip
+  - from: out/renderer
+    to: renderer
+
+# 启动脚本与说明放到 exe 旁边
+extraFiles:
+  - from: 使用说明.txt
+    to: 使用说明.txt
+  - from: 启动.bat
+    to: 启动.bat
+  - from: 启动桌面版.bat
+    to: 启动桌面版.bat
+  - from: 浏览器版.bat
+    to: 浏览器版.bat
+
+asar: true
+compression: normal
+npmRebuild: false
+
+win:
+  target:
+    - target: zip
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: MC-Launcher-${version}-win-x64.${ext}
+
+# 单文件免安装 exe（本机 makensis 报 mmap 错误，故默认出 zip 绿色版）：
+#   npx electron-builder --win portable --x64

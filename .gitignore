@@ -1,0 +1,34 @@
+# 依赖与构建产物
+node_modules/
+out/
+dist/
+.harness/
+build/icon.png
+
+# 运行时数据（含游戏本体、实例、配置，可能几百 MB 且含个人信息）
+.mcdata/
+MCLauncherData/
+*.log
+boot.log
+server-port.txt
+diag.log
+
+# 打包/下载缓存
+.electron-cache/
+.npm-cache/
+.eb-cache/
+*.tsbuildinfo
+
+# 编辑器与系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 本地临时排查文件
+*.part
+chrome-*.log
+boot-*.log
+matrix*.log
+matrix*.bat

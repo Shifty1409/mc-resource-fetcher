@@ -1,0 +1,23 @@
+# 统一换行符
+#
+# .bat 必须原样保留 CRLF：实测过 cmd 解析 LF-only 的 bat 会吃掉行首、
+# 报「不是内部或外部命令」，所以这些文件禁止任何换行转换（-text = 不做归一化）。
+*.bat -text
+*.cmd -text
+*.ps1 -text
+
+# 其余文本统一 LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# 二进制
+*.ico binary
+*.png binary
