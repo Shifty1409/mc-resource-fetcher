@@ -56,11 +56,25 @@ export interface InstalledContent {
   modpack: string[]
 }
 
+export interface DirEntry {
+  name: string
+  isDir: boolean
+  size: number
+}
+
+export interface DirListing {
+  path: string
+  parent: string | null
+  entries: DirEntry[]
+}
+
 /** preload 暴露到 window.mc 的完整 API */
 export interface McApi {
   snapshot(): Promise<SnapshotInfo>
   saveConfig(patch: Partial<AppConfig>): Promise<AppConfig>
   openPath(path: string, reveal?: boolean): Promise<void>
+  fsList(path: string): Promise<DirListing>
+  fsDrives(): Promise<string[]>
   selectDir(path: string): Promise<string | null>
   versions(force?: boolean): Promise<VanillaVersion[]>
   loaderVersions(kind: LoaderKind, mcVersion: string): Promise<LoaderVersion[]>

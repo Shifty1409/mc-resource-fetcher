@@ -3,10 +3,10 @@
  * 启动：node .harness/main/server.js [--port=19388] [--open]
  * 前端由 out/renderer 静态托管，window.mc 由 browser-api.ts 的 HTTP 适配层提供。
  */
-import { createReadStream } from 'node:fs'
-import { readFile, stat } from 'node:fs/promises'
+import { createReadStream, readdirSync, statSync } from 'node:fs'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { createServer, type ServerResponse } from 'node:http'
-import { extname, join, normalize } from 'node:path'
+import { basename, dirname, extname, join, normalize, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import type { ContentKind, InstanceMeta, LoaderKind, SearchQuery } from '../shared/types'
 import { config } from './core/config'
@@ -80,72 +80,40 @@ function json(res: ServerResponse, code: number, body: unknown): void {
   res.end(text)
 }
 
-/**
- * 在资源管理器里打开目录 / 用默认程序打开文件或链接。
- * 应用窗口模式下前端跑在浏览器里，没法直接调 shell，所以由服务端代劳。
- */
-function openInShell(target: string, reveal: boolean): boolean {
-  if (!target) return false
-  try {
-    let p = target
-    if (p.startsWith('file://')) p = decodeURIComponent(p.slice('file://'.length))
-    if (reveal) {
-      // 在资源管理器中选中该文件
-      spawn('explorer.exe', ['/select,', p], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
-      return true
-    }
-    // start 对目录、文件、URL 都适用
-    spawn('cmd', ['/c', 'start', '', p], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
-    return true
-  } catch (e) {
-    logError('server', e)
-    return false
-  }
+/** 列出目录内容（应用内文件浏览用，不依赖系统外壳） */
+async function listDir(target: string): Promise<{
+  path: string
+  parent: string | null
+  entries: Array<{ name: string; isDir: boolean; size: number }>
+}> {
+  const abs = resolve(target)
+  const st = await stat(abs)
+  if (!st.isDirectory()) throw new Error('不是有效目录')
+  const items = await readdir(abs, { withFileTypes: true })
+  const entries = items
+    .map((d) => {
+      let size = 0
+      if (!d.isDirectory()) {
+        try {
+          size = statSync(join(abs, d.name)).size
+        } catch {
+          size = 0
+        }
+      }
+      return { name: d.name, isDir: d.isDirectory(), size }
+    })
+    .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name, 'zh') : a.isDir ? -1 : 1))
+  const parentDir = dirname(abs)
+  return { path: abs, parent: parentDir === abs ? null : parentDir, entries }
 }
 
-/** 弹出系统文件夹选择框（WinForms），超时或取消返回 null */
-function pickDirectory(initial: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const script = [
-      'Add-Type -AssemblyName System.Windows.Forms | Out-Null',
-      '$d = New-Object System.Windows.Forms.FolderBrowserDialog',
-      '$d.Description = "选择游戏目录"',
-      `$d.SelectedPath = '${initial.replace(/'/g, "''")}'`,
-      'if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $d.SelectedPath }'
-    ].join('; ')
-    let out = ''
-    let child: ReturnType<typeof spawn>
-    try {
-      child = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', script], {
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'ignore']
-      })
-    } catch (e) {
-      logError('server', e)
-      resolve(null)
-      return
-    }
-    const timer = setTimeout(() => {
-      try {
-        child.kill()
-      } catch {
-        /* ignore */
-      }
-      resolve(null)
-    }, 180_000)
-    child.stdout?.on('data', (c: Buffer) => {
-      out += c.toString('utf8')
-    })
-    child.on('error', () => {
-      clearTimeout(timer)
-      resolve(null)
-    })
-    child.on('close', () => {
-      clearTimeout(timer)
-      const picked = out.trim().split(/\r?\n/).pop() ?? ''
-      resolve(picked ? picked : null)
-    })
-  })
+async function existingService(port: number): Promise<boolean> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1500) })
+    return r.ok
+  } catch {
+    return false
+  }
 }
 
 async function readBody(req: import('node:http').IncomingMessage): Promise<Record<string, unknown>> {  const chunks: Buffer[] = []
@@ -243,29 +211,27 @@ async function handleApi(
     return true
   }
 
-  if (path === '/api/open-path' && method === 'POST') {
-    const body = await readBody(req)
-    const target = String(body.path ?? '')
-    const reveal = Boolean(body.reveal)
-    const ok = openInShell(target, reveal)
-    log('server', `打开路径 ${target} → ${ok ? 'ok' : 'fail'}`)
-    json(res, 200, { ok, message: ok ? '' : '打开失败，请检查路径是否存在' })
+  if (path === '/api/fs/drives' && method === 'GET') {
+    const drives: string[] = []
+    for (let c = 65; c <= 90; c++) {
+      const d = `${String.fromCharCode(c)}:\\`
+      try {
+        if (statSync(d).isDirectory()) drives.push(d)
+      } catch {
+        /* 不存在的盘符跳过 */
+      }
+    }
+    json(res, 200, { drives })
     return true
   }
 
-  if (path === '/api/select-dir' && method === 'POST') {
-    const body = await readBody(req)
-    const picked = await pickDirectory(String(body.path ?? config.get().gameRoot))
-    json(res, 200, { path: picked })
-    return true
-  }
-
-  if (path === '/api/open-dir' && method === 'POST') {
-    const body = await readBody(req)
-    const id = String(body.instanceId ?? body.id ?? '')
-    const dir = id ? instanceDir(id) : config.get().gameRoot
-    const ok = openInShell(dir, false)
-    json(res, 200, { ok })
+  if (path === '/api/fs/list' && method === 'GET') {
+    const target = String(q.path || config.get().gameRoot)
+    try {
+      json(res, 200, await listDir(target))
+    } catch (e) {
+      json(res, 400, { message: e instanceof Error ? e.message : String(e) })
+    }
     return true
   }
 

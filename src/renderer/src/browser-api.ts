@@ -79,12 +79,21 @@ export function installBrowserApi(): boolean {
     snapshot: () => get('/api/snapshot'),
     saveConfig: (patch: Partial<AppConfig>) => post('/api/config', patch),
     openPath: async (path: string, reveal?: boolean) => {
-      const res = await post<{ ok: boolean; message?: string }>('/api/open-path', { path, reveal: Boolean(reveal) })
-      if (!res.ok) throw new Error(res.message || '打开失败')
+      // 服务端已不再调起系统外壳（explorer 在该环境会 0xc0000142，PowerShell 拼接还有注入面）。
+      // 链接交给浏览器自己开，目录交给应用内目录面板。
+      if (/^(https?|mailto):/i.test(path)) {
+        window.open(path, '_blank', 'noopener,noreferrer')
+        return
+      }
+      throw new Error('目录请在「游戏目录」面板中浏览（已不再调用系统外壳）')
     },
-    selectDir: async (path: string) => {
-      const res = await post<{ path: string | null }>('/api/select-dir', { path })
-      return res.path ?? null
+    fsList: (path: string) => get(`/api/fs/list?path=${encodeURIComponent(path)}`),
+    fsDrives: async () => {
+      const res = await get<{ drives: string[] }>('/api/fs/drives')
+      return res.drives ?? []
+    },
+    selectDir: async () => {
+      throw new Error('请用「游戏目录」面板选择目录')
     },
     versions: (force?: boolean) => get(`/api/versions?force=${force ? 1 : 0}`),
     loaderVersions: (kind, mcVersion) => get(`/api/loader-versions?kind=${kind}&mc=${encodeURIComponent(mcVersion)}`),

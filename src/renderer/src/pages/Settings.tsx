@@ -8,9 +8,11 @@ interface Props {
   snapshot: SnapshotInfo
   ctx: UiCtx
   onSaved: () => Promise<void>
+  /** 打开应用内目录面板（选择游戏目录） */
+  onOpenDir: (startPath: string) => void
 }
 
-export default function SettingsPage({ snapshot, ctx, onSaved }: Props): React.JSX.Element {
+export default function SettingsPage({ snapshot, ctx, onSaved, onOpenDir }: Props): React.JSX.Element {
   const [cfg, setCfg] = useState<AppConfig>(snapshot.config)
   const [javaList, setJavaList] = useState<JavaInfo[]>(snapshot.javaList)
   const [saving, setSaving] = useState(false)
@@ -69,11 +71,8 @@ export default function SettingsPage({ snapshot, ctx, onSaved }: Props): React.J
           </div>
           <div className="control">
             <input className="input mono" style={{ maxWidth: 420 }} value={cfg.gameRoot} readOnly />
-            <button className="btn sm" onClick={() => void pickDir()}>
-              选择
-            </button>
-            <button className="btn sm ghost" onClick={() => void window.mc.openPath(cfg.gameRoot)}>
-              <IconFolder />
+            <button className="btn sm" onClick={() => onOpenDir(cfg.gameRoot)}>
+              浏览并更改
             </button>
           </div>
         </div>

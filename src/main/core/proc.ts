@@ -22,6 +22,12 @@ export interface SpawnOptions {
    * 结果就是 GLFW/LWJGL 建出来的游戏窗口一直隐藏——进度正常、有声音、但没画面。
    */
   hideWindow?: boolean
+  /**
+   * 是否让子进程脱离父进程的进程组/控制台，默认 false。
+   * ⚠️ 启动游戏必须传 true：否则关闭启动器窗口（或控制台）时
+   * Windows 会把 CTRL_CLOSE 事件发给同一进程组的 java.exe，游戏跟着被杀。
+   */
+  detach?: boolean
 }
 
 export interface RunningProcess {
@@ -44,9 +50,12 @@ export async function spawnToLog(cmd: string, args: string[], opts: SpawnOptions
     cwd: opts.cwd,
     env: { ...process.env, ...(opts.env ?? {}) },
     stdio: ['ignore', fd, fd],
-    windowsHide: opts.hideWindow !== false
+    windowsHide: opts.hideWindow !== false,
+    detached: opts.detach === true
   })
   closeSync(fd)
+  // 脱离后不要因为父进程的句柄而让事件循环挂着
+  if (opts.detach === true) child.unref()
 
   let offset = 0
   let pending = ''

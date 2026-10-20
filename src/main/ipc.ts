@@ -58,6 +58,20 @@ export function registerIpc(): void {
     return saved
   })
 
+  ipcMain.handle(IPC.fsDrives, async () => {
+    const { statSync } = await import('node:fs')
+    const drives: string[] = []
+    for (let c = 65; c <= 90; c++) {
+      const d = `${String.fromCharCode(c)}:\\`
+      try {
+        if (statSync(d).isDirectory()) drives.push(d)
+      } catch {
+        /* skip */
+      }
+    }
+    return drives
+  })
+
   ipcMain.handle(IPC.openPath, async (_e, path: string, reveal?: boolean) => {
     await ensureDir(path).catch(() => undefined)
     if (reveal) {
@@ -66,6 +80,20 @@ export function registerIpc(): void {
       const err = await shell.openPath(path)
       if (err) throw new Error(err)
     }
+  })
+
+  ipcMain.handle(IPC.fsList, async (_e, path: string) => {
+    const { readdir, stat } = await import('node:fs/promises')
+    const { dirname, resolve } = await import('node:path')
+    const abs = resolve(path)
+    const st = await stat(abs)
+    if (!st.isDirectory()) throw new Error('不是有效目录')
+    const items = await readdir(abs, { withFileTypes: true })
+    const entries = items
+      .map((d) => ({ name: d.name, isDir: d.isDirectory(), size: 0 }))
+      .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name, 'zh') : a.isDir ? -1 : 1))
+    const parent = dirname(abs)
+    return { path: abs, parent: parent === abs ? null : parent, entries }
   })
 
   ipcMain.handle(IPC.selectDir, async (_e, path: string) => {

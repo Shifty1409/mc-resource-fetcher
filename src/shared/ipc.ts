@@ -3,6 +3,8 @@ export const IPC = {
   snapshot: 'app:snapshot',
   configSave: 'app:config-save',
   openPath: 'app:open-path',
+  fsList: 'app:fs-list',
+  fsDrives: 'app:fs-drives',
   selectDir: 'app:select-dir',
   instancesChanged: 'app:instances-changed',
 

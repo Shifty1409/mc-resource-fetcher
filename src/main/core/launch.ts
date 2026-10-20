@@ -342,6 +342,8 @@ export async function launchInstance(
     // 必须 false：否则游戏窗口会被 windowsHide 的 SW_HIDE 压住，只有声音没有画面。
     // MC_HIDE_GAME_WINDOW=1 是排查开关，用来复现「没画面」的问题。
     hideWindow: process.env.MC_HIDE_GAME_WINDOW === '1',
+    // 游戏脱离启动器的进程组：关掉启动器窗口后游戏继续跑，不会被 CTRL_CLOSE 带走
+    detach: true,
     onLine: (line) => cb.onLine?.(line)
   })
 

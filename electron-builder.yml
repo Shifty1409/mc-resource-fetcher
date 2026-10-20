@@ -26,16 +26,12 @@ extraResources:
   - from: out/renderer
     to: renderer
 
-# 启动脚本与说明放到 exe 旁边
+# 启动脚本与说明放到 exe 旁边（只保留桌面版入口）
 extraFiles:
   - from: 使用说明.txt
     to: 使用说明.txt
-  - from: 启动.bat
-    to: 启动.bat
   - from: 启动桌面版.bat
     to: 启动桌面版.bat
-  - from: 浏览器版.bat
-    to: 浏览器版.bat
 
 asar: true
 compression: normal

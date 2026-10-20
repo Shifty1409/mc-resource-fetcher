@@ -1,19 +1,25 @@
-# 依赖与构建产物
+# 依赖
 node_modules/
+
+# 构建产物（electron-vite / electron-builder）
 out/
-dist/
 .harness/
+dist/
+dist-*/
+*.zip
 build/icon.png
 
-# 运行时数据（含游戏本体、实例、配置，可能几百 MB 且含个人信息）
+# 本地打包脚本与日志
+build*.bat
+*.log
+
+# 运行时数据（游戏本体、实例、配置）
 .mcdata/
 MCLauncherData/
-*.log
-boot.log
 server-port.txt
-diag.log
+boot.log
 
-# 打包/下载缓存
+# 缓存
 .electron-cache/
 .npm-cache/
 .eb-cache/
@@ -26,9 +32,6 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
-# 本地临时排查文件
+# 临时
 *.part
-chrome-*.log
-boot-*.log
-matrix*.log
-matrix*.bat
+chk/

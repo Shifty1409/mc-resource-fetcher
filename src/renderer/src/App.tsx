@@ -6,6 +6,7 @@ import Browse from './pages/Browse'
 import Install from './pages/Install'
 import SettingsPage from './pages/Settings'
 import TaskDock from './components/TaskDock'
+import DirPanel from './components/DirPanel'
 import { errText } from './lib/format'
 import { IconCube, IconDownload, IconHome, IconSettings } from './components/Icons'
 
@@ -45,6 +46,7 @@ const TITLES: Record<Page, { title: string; sub: string }> = {
 
 export default function App(): React.JSX.Element {
   const [snapshot, setSnapshot] = useState<SnapshotInfo | null>(null)
+  const [dirPath, setDirPath] = useState<string | null>(null)
   const [page, setPage] = useState<Page>('home')
   const [taskList, setTaskList] = useState<TaskInfo[]>([])
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -186,10 +188,7 @@ export default function App(): React.JSX.Element {
           </div>
           <div className="spacer" />
           {snapshot && (
-            <button
-              className="btn sm"
-              onClick={() => window.mc.openPath(snapshot.gameRoot).catch((e) => toast(errText(e), 'error'))}
-            >
+            <button className="btn sm" onClick={() => setDirPath(snapshot.gameRoot)}>
               打开游戏目录
             </button>
           )}
@@ -221,7 +220,12 @@ export default function App(): React.JSX.Element {
             />
           )}
           {page === 'settings' && snapshot && (
-            <SettingsPage snapshot={snapshot} ctx={ctx} onSaved={refresh} />
+            <SettingsPage
+              snapshot={snapshot}
+              ctx={ctx}
+              onSaved={refresh}
+              onOpenDir={(start) => setDirPath(start)}
+            />
           )}
         </main>
       </div>
@@ -233,6 +237,18 @@ export default function App(): React.JSX.Element {
         }}
         onClear={() => setTaskList((prev) => prev.filter((t) => t.status === 'running'))}
       />
+
+      {dirPath && (
+        <DirPanel
+          initialPath={dirPath}
+          onClose={() => setDirPath(null)}
+          onToast={(msg, kind) => toast(msg, kind === 'error' ? 'error' : 'ok')}
+          onPick={async (p) => {
+            await window.mc.saveConfig({ gameRoot: p })
+            void refresh()
+          }}
+        />
+      )}
 
       <div className="toasts">
         {toasts.map((t) => (
