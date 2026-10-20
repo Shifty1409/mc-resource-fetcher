@@ -139,7 +139,9 @@ node node_modules\electron-builder\out\cli\cli.js --win zip --x64
 | 安装器预取 | Forge/NeoForge 的 installer 依赖先由镜像预取，规避 `maven.neoforged.net` 不可达 |
 | 离线启动 | 玩家名 → `OfflinePlayer:<name>` MD5 → v3 UUID，`userType=legacy`，全程不连微软 |
 | 镜像加速 | BMCLAPI 优先、官方兜底；连续失败自动熔断直连（指数退避） |
+| 多线程下载 | 大文件（≥4MB）按 Range 分段并发，默认 12 线程，可在设置里调；分段失败自动降级单连接 |
 | 下载器 | sha1 校验、`.part` 断点续传（Range）、45s 空闲超时、并发池、进度聚合 |
+| 秒级取消 | 取消检查放在数据回调里，不等整段下完；实测取消响应 140ms（旧版要等两分钟） |
 | 实例隔离 | 每个实例独立 mods / saves / config，共享 libraries 与 assets |
 | 任务栏 | 全局下载任务进度、速度、取消、失败原因 |
 

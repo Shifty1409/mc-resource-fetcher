@@ -78,10 +78,14 @@ export function installBrowserApi(): boolean {
   const api: McApi = {
     snapshot: () => get('/api/snapshot'),
     saveConfig: (patch: Partial<AppConfig>) => post('/api/config', patch),
-    openPath: async (path: string) => {
-      await post('/api/open-path', { path })
+    openPath: async (path: string, reveal?: boolean) => {
+      const res = await post<{ ok: boolean; message?: string }>('/api/open-path', { path, reveal: Boolean(reveal) })
+      if (!res.ok) throw new Error(res.message || '打开失败')
     },
-    selectDir: async () => null,
+    selectDir: async (path: string) => {
+      const res = await post<{ path: string | null }>('/api/select-dir', { path })
+      return res.path ?? null
+    },
     versions: (force?: boolean) => get(`/api/versions?force=${force ? 1 : 0}`),
     loaderVersions: (kind, mcVersion) => get(`/api/loader-versions?kind=${kind}&mc=${encodeURIComponent(mcVersion)}`),
     createInstance: (payload) => post('/api/instance', payload),
@@ -89,8 +93,8 @@ export function installBrowserApi(): boolean {
       await req(`/api/instance/${encodeURIComponent(id)}`, { method: 'DELETE' })
     },
     updateInstance: (meta: InstanceMeta) => put('/api/instance', meta),
-    openInstanceDir: async () => {
-      await post('/api/open-dir', {})
+    openInstanceDir: async (id: string) => {
+      await post('/api/open-dir', { instanceId: id })
     },
     launch: (id: string) => post('/api/launch', { id }),
     search: (q) =>

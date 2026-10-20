@@ -82,6 +82,8 @@ export interface AppConfig {
   gameRoot: string
   useMirror: boolean
   concurrency: number
+  /** 单个大文件的分段下载线程数 */
+  downloadThreads: number
   curseforgeApiKey: string
   defaultMemoryMb: number
   offlineName: string

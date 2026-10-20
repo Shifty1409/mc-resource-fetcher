@@ -1,6 +1,6 @@
 {
   "name": "mc-launcher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MineCraft 资源筛选下载器 + 离线启动器（PCL 风格）",
   "main": "./out/main/index.js",
   "author": "DSH",

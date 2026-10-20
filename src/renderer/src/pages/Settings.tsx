@@ -108,6 +108,26 @@ export default function SettingsPage({ snapshot, ctx, onSaved }: Props): React.J
 
         <div className="setting-row">
           <div className="label">
+            分段线程
+            <div className="desc">
+              单个大文件（≥4MB）拆成几段同时下载。测速被单连接限住时调大它，16 通常能吃满带宽
+            </div>
+          </div>
+          <div className="control">
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={16}
+              value={cfg.downloadThreads ?? 8}
+              style={{ width: 90 }}
+              onChange={(e) => patch({ downloadThreads: Number(e.target.value) || 8 })}
+            />
+          </div>
+        </div>
+
+        <div className="setting-row">
+          <div className="label">
             默认内存
             <div className="desc">新建实例的默认最大内存（MB）</div>
           </div>

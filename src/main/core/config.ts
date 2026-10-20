@@ -9,6 +9,7 @@ const DEFAULTS = (): AppConfig => ({
   gameRoot: join(portableRoot, 'Minecraft'),
   useMirror: true,
   concurrency: 6,
+  downloadThreads: 12,
   curseforgeApiKey: '',
   defaultMemoryMb: 4096,
   offlineName: 'Steve',
@@ -48,7 +49,8 @@ class ConfigStore {
   async save(patch?: Partial<AppConfig>): Promise<AppConfig> {
     if (patch) this.data = { ...this.data, ...patch }
     if (!this.data.gameRoot) this.data.gameRoot = DEFAULTS().gameRoot
-    this.data.concurrency = Math.max(1, Math.min(32, this.data.concurrency || 8))
+    this.data.concurrency = Math.max(1, Math.min(32, this.data.concurrency || 6))
+    this.data.downloadThreads = Math.max(1, Math.min(16, this.data.downloadThreads || 12))
     this.data.defaultMemoryMb = Math.max(512, Math.min(65536, this.data.defaultMemoryMb || 4096))
     setGameRoot(this.data.gameRoot)
     await ensureDir(portableRoot)
@@ -62,3 +64,5 @@ export const config = new ConfigStore()
 export { appVersion }
 
 export type { JavaInfo }
+
+

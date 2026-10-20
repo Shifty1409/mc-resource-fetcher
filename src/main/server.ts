@@ -80,8 +80,75 @@ function json(res: ServerResponse, code: number, body: unknown): void {
   res.end(text)
 }
 
-async function readBody(req: import('node:http').IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = []
+/**
+ * 在资源管理器里打开目录 / 用默认程序打开文件或链接。
+ * 应用窗口模式下前端跑在浏览器里，没法直接调 shell，所以由服务端代劳。
+ */
+function openInShell(target: string, reveal: boolean): boolean {
+  if (!target) return false
+  try {
+    let p = target
+    if (p.startsWith('file://')) p = decodeURIComponent(p.slice('file://'.length))
+    if (reveal) {
+      // 在资源管理器中选中该文件
+      spawn('explorer.exe', ['/select,', p], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+      return true
+    }
+    // start 对目录、文件、URL 都适用
+    spawn('cmd', ['/c', 'start', '', p], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+    return true
+  } catch (e) {
+    logError('server', e)
+    return false
+  }
+}
+
+/** 弹出系统文件夹选择框（WinForms），超时或取消返回 null */
+function pickDirectory(initial: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const script = [
+      'Add-Type -AssemblyName System.Windows.Forms | Out-Null',
+      '$d = New-Object System.Windows.Forms.FolderBrowserDialog',
+      '$d.Description = "选择游戏目录"',
+      `$d.SelectedPath = '${initial.replace(/'/g, "''")}'`,
+      'if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $d.SelectedPath }'
+    ].join('; ')
+    let out = ''
+    let child: ReturnType<typeof spawn>
+    try {
+      child = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', script], {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'ignore']
+      })
+    } catch (e) {
+      logError('server', e)
+      resolve(null)
+      return
+    }
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        /* ignore */
+      }
+      resolve(null)
+    }, 180_000)
+    child.stdout?.on('data', (c: Buffer) => {
+      out += c.toString('utf8')
+    })
+    child.on('error', () => {
+      clearTimeout(timer)
+      resolve(null)
+    })
+    child.on('close', () => {
+      clearTimeout(timer)
+      const picked = out.trim().split(/\r?\n/).pop() ?? ''
+      resolve(picked ? picked : null)
+    })
+  })
+}
+
+async function readBody(req: import('node:http').IncomingMessage): Promise<Record<string, unknown>> {  const chunks: Buffer[] = []
   for await (const c of req) chunks.push(c as Buffer)
   if (!chunks.length) return {}
   try {
@@ -178,9 +245,27 @@ async function handleApi(
 
   if (path === '/api/open-path' && method === 'POST') {
     const body = await readBody(req)
-    log('server', `请求打开路径: ${String(body.path)}`)
-    // 无桌面 shell 时无法真的打开资源管理器，直接返回成功避免前端报错
-    json(res, 200, { ok: false, message: '浏览器模式下无法打开本地文件夹' })
+    const target = String(body.path ?? '')
+    const reveal = Boolean(body.reveal)
+    const ok = openInShell(target, reveal)
+    log('server', `打开路径 ${target} → ${ok ? 'ok' : 'fail'}`)
+    json(res, 200, { ok, message: ok ? '' : '打开失败，请检查路径是否存在' })
+    return true
+  }
+
+  if (path === '/api/select-dir' && method === 'POST') {
+    const body = await readBody(req)
+    const picked = await pickDirectory(String(body.path ?? config.get().gameRoot))
+    json(res, 200, { path: picked })
+    return true
+  }
+
+  if (path === '/api/open-dir' && method === 'POST') {
+    const body = await readBody(req)
+    const id = String(body.instanceId ?? body.id ?? '')
+    const dir = id ? instanceDir(id) : config.get().gameRoot
+    const ok = openInShell(dir, false)
+    json(res, 200, { ok })
     return true
   }
 
@@ -403,11 +488,6 @@ async function handleApi(
       }
     })()
     json(res, 200, { taskId: handle.id })
-    return true
-  }
-
-  if (path === '/api/open-dir' && method === 'POST') {
-    json(res, 200, { ok: true })
     return true
   }
 
